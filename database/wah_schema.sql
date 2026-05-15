@@ -28,7 +28,7 @@ CREATE TABLE wah_patients (
   raw_source_payload JSONB,
 
   -- Record tracking
-  status VARCHAR(20) DEFAULT 'SAVED' CHECK (status IN ('SAVED', 'SENT', 'RECEIVED')),
+  status VARCHAR(20) DEFAULT 'SAVED' CHECK (status IN ('SAVED', 'QUEUED', 'SENT', 'RECEIVED')),
   source VARCHAR(20) DEFAULT 'LOCAL' CHECK (source IN ('LOCAL', 'RECEIVED')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

@@ -65,21 +65,26 @@ export async function PUT(request: NextRequest) {
     const { id, ...updates } = body;
     if (!id) return NextResponse.json({ success: false, message: 'id is required' }, { status: 400 });
 
-    // Rebuild metadata from updated payload
-    const payload = updates.hl7v2_payload || updates;
-    const updateData: Record<string, unknown> = {
-      patient_name: payload.patient_lname ? `${payload.patient_lname}, ${payload.patient_fname} ${payload.patient_mname || ''}`.trim() : undefined,
-      philhealth_no: payload.philhealth_no,
-      sex: payload.sex,
-      dob: payload.dob || null,
-      diagnosis_code: payload.diagnosis_code,
-      diagnosis_desc: payload.diagnosis_desc,
-      priority: payload.priority,
-      hl7v2_payload: payload,
-    };
+    // If only status is being updated (e.g. from inbox accept), don't touch other fields
+    const updateData: Record<string, unknown> = {};
+
+    if (updates.status) updateData.status = updates.status;
+
+    // Only rebuild payload fields if actual patient data is being updated
+    if (updates.hl7v2_payload || updates.patient_fname || updates.patient_lname) {
+      const payload = updates.hl7v2_payload || updates;
+      updateData.patient_name = payload.patient_lname ? `${payload.patient_lname}, ${payload.patient_fname} ${payload.patient_mname || ''}`.trim() : undefined;
+      updateData.philhealth_no = payload.philhealth_no;
+      updateData.sex = payload.sex;
+      updateData.dob = payload.dob || null;
+      updateData.diagnosis_code = payload.diagnosis_code;
+      updateData.diagnosis_desc = payload.diagnosis_desc;
+      updateData.priority = payload.priority;
+      updateData.hl7v2_payload = payload;
+    }
+
     // Remove undefined keys
     Object.keys(updateData).forEach(k => updateData[k] === undefined && delete updateData[k]);
-    if (updates.status) updateData.status = updates.status;
 
     const { data, error } = await supabaseAdmin.from('ihomis_patients').update(updateData).eq('id', id).select().single();
     if (error) return NextResponse.json({ success: false, message: error.message }, { status: 500 });
