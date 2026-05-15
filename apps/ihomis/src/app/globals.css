@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #f8f9fa;
+  --color-bg-secondary: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-sidebar: #1a2332;
+  --color-bg-sidebar-hover: #243044;
+  --color-bg-input: #f8f9fa;
+  --color-border: #e0e4e8;
+  --color-border-focus: #2563eb;
+  --color-accent: #1e3a5f;
+  --color-accent-light: #2563eb;
+  --color-accent-bright: #3b82f6;
+  --color-text-primary: #1a1d21;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #9ca3af;
+  --color-text-sidebar: #94a3b8;
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --font-sans: 'Inter', -apple-system, system-ui, sans-serif;
+}
+
+@layer base {
+  body { background: var(--color-bg-primary); color: var(--color-text-primary); font-family: var(--font-sans); font-size: 14px; }
+}
+
+/* Cards */
+.ihomis-card {
+  background: var(--color-bg-card); border: 1px solid var(--color-border);
+  border-radius: 8px; transition: box-shadow 0.15s ease;
+}
+.ihomis-card:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+
+/* Sidebar */
+.ihomis-sidebar-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 6px;
+  color: var(--color-text-sidebar); font-size: 13px; font-weight: 500;
+  transition: all 0.15s ease; text-decoration: none;
+}
+.ihomis-sidebar-link:hover { background: var(--color-bg-sidebar-hover); color: #e2e8f0; }
+.ihomis-sidebar-link.active { background: rgba(37,99,235,0.15); color: #fff; }
+
+/* Form Inputs */
+.ihomis-input {
+  width: 100%; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+  background: var(--color-bg-input); border: 1px solid var(--color-border);
+  color: var(--color-text-primary); outline: none; transition: border-color 0.15s;
+}
+.ihomis-input:focus { border-color: var(--color-border-focus); box-shadow: 0 0 0 2px rgba(37,99,235,0.08); }
+.ihomis-input::placeholder { color: var(--color-text-muted); }
+
+/* Buttons */
+.ihomis-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500;
+  border: none; cursor: pointer; transition: all 0.15s ease;
+}
+.ihomis-btn-primary { background: var(--color-accent); color: #fff; }
+.ihomis-btn-primary:hover { background: #162d4a; }
+.ihomis-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.ihomis-btn-secondary { background: #fff; border: 1px solid var(--color-border); color: var(--color-text-primary); }
+.ihomis-btn-secondary:hover { background: var(--color-bg-primary); }
+
+/* Labels */
+.ihomis-label { display: block; font-size: 12px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 4px; }
+
+/* Section */
+.ihomis-section-title {
+  font-size: 13px; font-weight: 600; color: var(--color-text-primary); text-transform: uppercase; letter-spacing: 0.5px;
+  padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--color-border);
+}
+
+/* Badge */
+.ihomis-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+}
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 20px; right: 20px; padding: 10px 16px;
+  border-radius: 6px; font-size: 13px; font-weight: 500; z-index: 9999;
+  animation: fadeIn 0.2s ease-out; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.toast-success { background: #fff; border: 1px solid var(--color-success); color: var(--color-success); }
+.toast-error { background: #fff; border: 1px solid var(--color-error); color: var(--color-error); }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }

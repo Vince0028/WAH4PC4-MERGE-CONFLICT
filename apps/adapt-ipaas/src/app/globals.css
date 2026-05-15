@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #f5f6f8;
+  --color-bg-secondary: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-sidebar: #1b1b2f;
+  --color-bg-sidebar-hover: #2a2a45;
+  --color-bg-input: #f5f6f8;
+  --color-border: #e2e4ea;
+  --color-border-focus: #7c3aed;
+  --color-accent: #4c1d95;
+  --color-accent-light: #7c3aed;
+  --color-accent-bright: #8b5cf6;
+  --color-text-primary: #1a1d21;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #9ca3af;
+  --color-text-sidebar: #a5a5c0;
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-info: #2563eb;
+  --font-sans: 'Inter', -apple-system, system-ui, sans-serif;
+}
+
+@layer base {
+  body { background: var(--color-bg-primary); color: var(--color-text-primary); font-family: var(--font-sans); font-size: 14px; }
+}
+
+/* Cards */
+.ipaas-card {
+  background: var(--color-bg-card); border: 1px solid var(--color-border);
+  border-radius: 8px; transition: box-shadow 0.15s ease;
+}
+.ipaas-card:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+
+/* Sidebar */
+.ipaas-sidebar-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 6px;
+  color: var(--color-text-sidebar); font-size: 13px; font-weight: 500;
+  transition: all 0.15s ease; text-decoration: none;
+}
+.ipaas-sidebar-link:hover { background: var(--color-bg-sidebar-hover); color: #e0e0f0; }
+.ipaas-sidebar-link.active { background: rgba(139,92,246,0.15); color: #fff; }
+
+/* Buttons */
+.ipaas-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500;
+  border: none; cursor: pointer; transition: all 0.15s ease;
+}
+.ipaas-btn-primary { background: var(--color-accent); color: #fff; }
+.ipaas-btn-primary:hover { background: #3b1578; }
+.ipaas-btn-secondary { background: #fff; border: 1px solid var(--color-border); color: var(--color-text-primary); }
+.ipaas-btn-secondary:hover { background: var(--color-bg-primary); }
+
+/* Badges */
+.ipaas-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+}
+
+/* Status badges */
+.status-success { background: rgba(5,150,105,0.08); color: var(--color-success); }
+.status-pending { background: rgba(217,119,6,0.08); color: var(--color-warning); }
+.status-quarantined { background: rgba(220,38,38,0.08); color: var(--color-error); }
+.status-transforming { background: rgba(37,99,235,0.08); color: var(--color-info); }
+
+/* Section */
+.ipaas-section-title {
+  font-size: 13px; font-weight: 600; color: var(--color-text-primary); text-transform: uppercase; letter-spacing: 0.5px;
+  padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--color-border);
+}
+
+/* Table */
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.data-table th {
+  padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border); background: var(--color-bg-primary);
+}
+.data-table td {
+  padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--color-border);
+}
+.data-table tbody tr { transition: background 0.15s; }
+.data-table tbody tr:hover { background: rgba(139,92,246,0.03); }
+
+/* JSON viewer */
+.json-viewer {
+  background: var(--color-bg-primary); border: 1px solid var(--color-border);
+  border-radius: 6px; padding: 12px; font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; line-height: 1.5; overflow-x: auto; white-space: pre-wrap;
+}
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 20px; right: 20px; padding: 10px 16px;
+  border-radius: 6px; font-size: 13px; font-weight: 500; z-index: 9999;
+  animation: fadeIn 0.2s ease-out; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.toast-success { background: #fff; border: 1px solid var(--color-success); color: var(--color-success); }
+.toast-error { background: #fff; border: 1px solid var(--color-error); color: var(--color-error); }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }

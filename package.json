@@ -1,0 +1,20 @@
+{
+  "name": "adapt-lhie-prototype",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:ipaas": "turbo run dev --filter=adapt-ipaas",
+    "dev:ihomis": "turbo run dev --filter=ihomis",
+    "dev:wah": "turbo run dev --filter=wah-hospital",
+    "build": "turbo run build",
+    "lint": "turbo run lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0"
+  }
+}
