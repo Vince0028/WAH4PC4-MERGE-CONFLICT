@@ -87,7 +87,7 @@ export default function SendPage() {
             <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Go to Records and click "Move to Send Queue" on a record.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3" style={{ maxHeight: 'calc(100vh - 180px)', overflowY: 'auto', paddingRight: '4px' }}>
             {records.map(rec => (
               <div key={rec.id} className="wah-card p-4">
                 <div className="flex items-start justify-between mb-2">

@@ -26,7 +26,7 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     const [metricsData, txData] = await Promise.all([
-      safeFetch('/api/metrics'), safeFetch('/api/transactions?limit=5'),
+      safeFetch('/api/metrics'), safeFetch('/api/transactions?limit=50'),
     ]);
     if (metricsData.success) setMetrics(metricsData.metrics);
     if (txData.success) setRecentTx(txData.data || []);
@@ -100,7 +100,7 @@ export default function Dashboard() {
             <div className="ipaas-card overflow-hidden">
               <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
                 <h2 className="text-sm font-semibold">Recent Activity</h2>
-                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Latest 5 transactions</p>
+                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>All transactions ({recentTx.length})</p>
               </div>
               {recentTx.length === 0 ? (
                 <div className="p-10 text-center">
@@ -108,6 +108,7 @@ export default function Dashboard() {
                   <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>No transactions yet. Send data from iHOMIS or WAH.</p>
                 </div>
               ) : (
+              <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
                 <table className="data-table">
                   <thead><tr><th>Transaction ID</th><th>Direction</th><th>Status</th><th>Date</th></tr></thead>
                   <tbody>
@@ -124,6 +125,7 @@ export default function Dashboard() {
                     })}
                   </tbody>
                 </table>
+              </div>
               )}
             </div>
           </>

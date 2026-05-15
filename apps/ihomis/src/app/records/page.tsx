@@ -160,7 +160,7 @@ export default function RecordsPage() {
         ) : records.length === 0 ? (
           <div className="ihomis-card p-10 text-center"><p className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>No records yet. Create one from "New Patient Record".</p></div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3" style={{ maxHeight: 'calc(100vh - 180px)', overflowY: 'auto', paddingRight: '4px' }}>
             {records.map(rec => {
               const isExpanded = expandedId === rec.id;
               const isEditing = editId === rec.id;

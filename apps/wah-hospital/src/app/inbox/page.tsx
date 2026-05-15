@@ -157,7 +157,7 @@ export default function InboxPage() {
             <p className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>No incoming records</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3" style={{ maxHeight: 'calc(100vh - 180px)', overflowY: 'auto', paddingRight: '4px' }}>
             {records.map(rec => {
               const isExpanded = expandedId === rec.id;
               const fields = isExpanded ? extractFHIRFields(rec.fhir_bundle) : {};
