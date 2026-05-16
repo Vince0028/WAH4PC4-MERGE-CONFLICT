@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import WAHSidebar from '@/components/Sidebar';
+import ConsentFormModal from '@/components/ConsentFormModal';
 
 async function safeFetch(url: string, opts?: RequestInit) {
   const res = await fetch(url, opts);
@@ -13,6 +14,7 @@ interface WAHRecord {
   birth_date: string; diagnosis_code: string; diagnosis_display: string;
   status: string; source: string; created_at: string;
   fhir_bundle: Record<string, unknown>;
+  consent_signed: boolean;
 }
 
 // Dynamic extraction of ALL fields from FHIR bundle including Observations
@@ -137,6 +139,8 @@ export default function RecordsPage() {
   const [deleteModal, setDeleteModal] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [movingId, setMovingId] = useState<string | null>(null);
+  const [showConsent, setShowConsent] = useState(false);
+  const [consentEdits, setConsentEdits] = useState<Record<string, boolean>>({});
 
   const showToast = (type: 'success' | 'error', msg: string) => { setToast({ type, msg }); setTimeout(() => setToast(null), 4000); };
 
@@ -156,6 +160,7 @@ export default function RecordsPage() {
 
   const startEdit = (rec: WAHRecord) => {
     setEditData(fieldsToMap(extractFlat(rec.fhir_bundle)));
+    setConsentEdits(prev => ({ ...prev, [rec.id]: rec.consent_signed ?? false }));
     setEditId(rec.id);
     setExpandedId(rec.id);
     setViewMode('summary');
@@ -178,6 +183,7 @@ export default function RecordsPage() {
           birth_date: editData.birth_date || rec.birth_date,
           diagnosis_code: editData.diagnosis_code || rec.diagnosis_code,
           diagnosis_display: editData.diagnosis_display || rec.diagnosis_display,
+          consent_signed: consentEdits[rec.id] ?? rec.consent_signed,
         }),
       });
       if (data.success) { showToast('success', 'Record updated'); setEditId(null); fetchRecords(); }
@@ -243,6 +249,12 @@ export default function RecordsPage() {
                         background: rec.status === 'SENT' ? 'rgba(5,150,105,0.08)' : 'rgba(217,119,6,0.08)',
                         color: rec.status === 'SENT' ? 'var(--color-success)' : 'var(--color-warning)',
                       }}>{rec.status}</span>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded" style={{
+                        background: rec.consent_signed ? 'rgba(5,150,105,0.08)' : 'rgba(220,38,38,0.08)',
+                        color: rec.consent_signed ? '#059669' : '#dc2626',
+                      }}>
+                        {rec.consent_signed ? '✓ Consent' : '⚠ No Consent'}
+                      </span>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-3">
@@ -318,6 +330,34 @@ export default function RecordsPage() {
                               <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: '#d97706' }} /> Missing: {fieldsList.filter(f => !f.value).length}</span>
                             </div>
                           )}
+
+                          {/* Consent Status Row */}
+                          <div className="px-3 py-2.5 flex items-center justify-between" style={{ background: 'var(--color-bg-primary)', borderTop: '1px solid var(--color-border)' }}>
+                            <div className="flex items-center gap-2">
+                              {isEditing ? (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={consentEdits[rec.id] ?? rec.consent_signed}
+                                    onChange={e => setConsentEdits(prev => ({ ...prev, [rec.id]: e.target.checked }))}
+                                    className="consent-checkbox-sm"
+                                  />
+                                  <span className="text-[11px] font-medium">Data Privacy Consent</span>
+                                </label>
+                              ) : (
+                                <span className="flex items-center gap-1.5 text-[11px] font-medium">
+                                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: rec.consent_signed ? '#059669' : '#dc2626' }} />
+                                  Data Privacy Consent: {rec.consent_signed ? 'Signed' : 'Not Signed'}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => setShowConsent(true)}
+                              className="consent-view-link text-[11px]"
+                            >
+                              View Consent Form
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <pre className="p-3 rounded text-xs overflow-auto whitespace-pre-wrap" style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', maxHeight: '500px' }}>
@@ -350,6 +390,7 @@ export default function RecordsPage() {
           </div>
         )}
         {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
+        <ConsentFormModal open={showConsent} onClose={() => setShowConsent(false)} />
       </main>
     </>
   );

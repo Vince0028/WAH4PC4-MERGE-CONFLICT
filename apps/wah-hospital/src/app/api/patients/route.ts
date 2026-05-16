@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
         diagnosis_code: body.diagnosis_code,
         diagnosis_display: body.diagnosis_display,
         fhir_bundle: body.fhir_bundle,
+        consent_signed: body.consent_signed ?? false,
         status: 'SAVED',
         source: 'LOCAL',
       })
@@ -73,6 +74,8 @@ export async function PUT(request: NextRequest) {
     if (updates.diagnosis_display) updateData.diagnosis_display = updates.diagnosis_display;
     if (updates.fhir_bundle) updateData.fhir_bundle = updates.fhir_bundle;
     if (updates.status) updateData.status = updates.status;
+    if (updates.consent_signed !== undefined) updateData.consent_signed = updates.consent_signed;
+    if (updates.rejection_reason !== undefined) updateData.rejection_reason = updates.rejection_reason;
 
     const { data, error } = await supabaseAdmin.from('wah_patients').update(updateData).eq('id', id).select().single();
     if (error) return NextResponse.json({ success: false, message: error.message }, { status: 500 });

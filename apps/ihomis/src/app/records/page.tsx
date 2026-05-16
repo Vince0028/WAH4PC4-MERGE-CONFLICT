@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import IHOMISSidebar from '@/components/Sidebar';
+import ConsentFormModal from '@/components/ConsentFormModal';
 
 async function safeFetch(url: string, opts?: RequestInit) {
   const res = await fetch(url, opts);
@@ -14,6 +15,7 @@ interface PatientRecord {
   priority: string; status: string; source: string;
   hl7v2_payload: Record<string, unknown>;
   created_at: string;
+  consent_signed: boolean;
 }
 
 const FIELD_MAP: { key: string; label: string; nested?: string }[] = [
@@ -82,6 +84,8 @@ export default function RecordsPage() {
   const [deleteModal, setDeleteModal] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [movingId, setMovingId] = useState<string | null>(null);
+  const [showConsent, setShowConsent] = useState(false);
+  const [consentEdits, setConsentEdits] = useState<Record<string, boolean>>({});
 
   const showToast = (type: 'success' | 'error', msg: string) => { setToast({ type, msg }); setTimeout(() => setToast(null), 4000); };
 
@@ -103,6 +107,7 @@ export default function RecordsPage() {
     const data: Record<string, string> = {};
     for (const field of FIELD_MAP) data[field.key] = getVal(rec.hl7v2_payload, field);
     setEditData(data);
+    setConsentEdits(prev => ({ ...prev, [rec.id]: rec.consent_signed ?? false }));
     setEditId(rec.id);
     setExpandedId(rec.id);
     setViewMode('summary');
@@ -114,7 +119,7 @@ export default function RecordsPage() {
     try {
       const data = await safeFetch('/api/patients', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: rec.id, hl7v2_payload: newPayload }),
+        body: JSON.stringify({ id: rec.id, hl7v2_payload: newPayload, consent_signed: consentEdits[rec.id] ?? rec.consent_signed }),
       });
       if (data.success) { showToast('success', 'Record updated'); setEditId(null); fetchRecords(); }
       else showToast('error', data.message || 'Failed');
@@ -178,6 +183,12 @@ export default function RecordsPage() {
                         background: rec.status === 'SENT' ? 'rgba(5,150,105,0.08)' : 'rgba(217,119,6,0.08)',
                         color: rec.status === 'SENT' ? 'var(--color-success)' : 'var(--color-warning)',
                       }}>{rec.status}</span>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded" style={{
+                        background: rec.consent_signed ? 'rgba(5,150,105,0.08)' : 'rgba(220,38,38,0.08)',
+                        color: rec.consent_signed ? '#059669' : '#dc2626',
+                      }}>
+                        {rec.consent_signed ? '✓ Consent' : '⚠ No Consent'}
+                      </span>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-3">
@@ -265,6 +276,34 @@ export default function RecordsPage() {
                               <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: '#d97706' }} /> Missing: {FIELD_MAP.filter(f => !getVal(rec.hl7v2_payload, f)).length}</span>
                             </div>
                           )}
+
+                          {/* Consent Status Row */}
+                          <div className="px-3 py-2.5 flex items-center justify-between" style={{ background: 'var(--color-bg-primary)', borderTop: '1px solid var(--color-border)' }}>
+                            <div className="flex items-center gap-2">
+                              {isEditing ? (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={consentEdits[rec.id] ?? rec.consent_signed}
+                                    onChange={e => setConsentEdits(prev => ({ ...prev, [rec.id]: e.target.checked }))}
+                                    className="consent-checkbox-sm"
+                                  />
+                                  <span className="text-[11px] font-medium">Data Privacy Consent</span>
+                                </label>
+                              ) : (
+                                <span className="flex items-center gap-1.5 text-[11px] font-medium">
+                                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: rec.consent_signed ? '#059669' : '#dc2626' }} />
+                                  Data Privacy Consent: {rec.consent_signed ? 'Signed' : 'Not Signed'}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => setShowConsent(true)}
+                              className="consent-view-link text-[11px]"
+                            >
+                              View Consent Form
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <pre className="p-3 rounded text-xs overflow-auto whitespace-pre-wrap" style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', maxHeight: '500px' }}>
@@ -299,6 +338,7 @@ export default function RecordsPage() {
           </div>
         )}
         {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
+        <ConsentFormModal open={showConsent} onClose={() => setShowConsent(false)} />
       </main>
     </>
   );

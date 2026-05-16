@@ -27,9 +27,13 @@ CREATE TABLE wah_patients (
   -- Raw source payload (original data before transformation, for comparison)
   raw_source_payload JSONB,
 
+  -- Patient data privacy consent (RA 10173)
+  consent_signed BOOLEAN DEFAULT FALSE,
+
   -- Record tracking
-  status VARCHAR(20) DEFAULT 'SAVED' CHECK (status IN ('SAVED', 'QUEUED', 'SENT', 'RECEIVED')),
+  status VARCHAR(20) DEFAULT 'SAVED' CHECK (status IN ('SAVED', 'QUEUED', 'SENT', 'RECEIVED', 'REJECTED')),
   source VARCHAR(20) DEFAULT 'LOCAL' CHECK (source IN ('LOCAL', 'RECEIVED')),
+  rejection_reason TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

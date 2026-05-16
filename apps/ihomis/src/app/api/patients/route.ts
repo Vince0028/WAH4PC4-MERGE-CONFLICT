@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
         diagnosis_desc: body.diagnosis_desc,
         priority: body.priority || 'ROUTINE',
         hl7v2_payload: body,
+        consent_signed: body.consent_signed ?? false,
         status: 'SAVED',
         source: 'LOCAL',
       })
@@ -69,6 +70,8 @@ export async function PUT(request: NextRequest) {
     const updateData: Record<string, unknown> = {};
 
     if (updates.status) updateData.status = updates.status;
+    if (updates.consent_signed !== undefined) updateData.consent_signed = updates.consent_signed;
+    if (updates.rejection_reason !== undefined) updateData.rejection_reason = updates.rejection_reason;
 
     // Only rebuild payload fields if actual patient data is being updated
     if (updates.hl7v2_payload || updates.patient_fname || updates.patient_lname) {

@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
         destination_system: 'iHOMIS',
         payload: patient.fhir_bundle,
         original_json: patient.fhir_bundle, // Clean FHIR for comparison
+        consent_signed: patient.consent_signed ?? false,
       }),
     });
 
@@ -49,11 +50,23 @@ export async function POST(request: NextRequest) {
         .eq('id', patient_id);
 
       console.log(`[WAH Send] Record ${patient_id} sent. TX: ${ipaasData.transaction_id}`);
+    } else {
+      // Rejected by iPaaS (e.g. no consent, validation failure)
+      await supabaseAdmin
+        .from('wah_patients')
+        .update({
+          status: 'REJECTED',
+          rejection_reason: ipaasData.message || 'Rejected by iPaaS',
+        })
+        .eq('id', patient_id);
+
+      console.warn(`[WAH Send] Record ${patient_id} REJECTED: ${ipaasData.message}`);
     }
 
     return NextResponse.json({
       success: ipaasData.success,
       transaction_id: ipaasData.transaction_id,
+      status: ipaasData.success ? 'SENT' : 'REJECTED',
       message: ipaasData.success
         ? `FHIR Bundle sent to DOH via iPaaS (TX: ${ipaasData.transaction_id?.slice(0, 8)})`
         : ipaasData.message || 'Failed to send',

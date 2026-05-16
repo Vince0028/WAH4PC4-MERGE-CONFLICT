@@ -14,6 +14,8 @@ interface PatientRecord {
   priority: string; status: string; source: string;
   hl7v2_payload: Record<string, unknown>;
   created_at: string;
+  consent_signed: boolean;
+  rejection_reason: string | null;
 }
 
 export default function SendPage() {
@@ -29,8 +31,13 @@ export default function SendPage() {
   const showToast = (type: 'success'|'error', msg: string) => { setToast({ type, msg }); setTimeout(() => setToast(null), 4000); };
 
   const fetchQueue = async () => {
-    const data = await safeFetch('/api/patients?status=QUEUED');
-    if (data.success) setRecords(data.data || []);
+    const [queuedRes, rejectedRes] = await Promise.all([
+      safeFetch('/api/patients?status=QUEUED'),
+      safeFetch('/api/patients?status=REJECTED'),
+    ]);
+    const all = [...(queuedRes.data || []), ...(rejectedRes.data || [])];
+    all.sort((a: PatientRecord, b: PatientRecord) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setRecords(all);
     setLoading(false);
   };
 
@@ -41,9 +48,20 @@ export default function SendPage() {
     try {
       const data = await safeFetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patient_id: patientId }) });
       if (data.success) { showToast('success', data.message); fetchQueue(); }
-      else showToast('error', data.message || 'Transformation failed');
+      else { showToast('error', data.message || 'Rejected by iPaaS'); fetchQueue(); }
     } catch { showToast('error', 'Failed to connect to iPaaS'); }
     finally { setSendingId(null); }
+  };
+
+  const handleRequeue = async (id: string) => {
+    try {
+      const data = await safeFetch('/api/patients', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: 'QUEUED', rejection_reason: null }),
+      });
+      if (data.success) { showToast('success', 'Re-queued for sending'); fetchQueue(); }
+      else showToast('error', data.message || 'Failed');
+    } catch { showToast('error', 'Failed'); }
   };
 
   const handleRevert = async (id: string) => {
@@ -91,8 +109,10 @@ export default function SendPage() {
           </div>
         ) : (
           <div className="space-y-3" style={{ maxHeight: 'calc(100vh - 180px)', overflowY: 'auto', paddingRight: '4px' }}>
-            {records.map(rec => (
-              <div key={rec.id} className="ihomis-card p-4">
+            {records.map(rec => {
+              const isRejected = rec.status === 'REJECTED';
+              return (
+              <div key={rec.id} className="ihomis-card p-4" style={isRejected ? { borderColor: 'rgba(220,38,38,0.3)' } : {}}>
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <p className="text-sm font-medium">{rec.patient_name}</p>
@@ -100,9 +120,32 @@ export default function SendPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ background: 'rgba(37,99,235,0.08)', color: '#2563eb' }}>HL7 v2</span>
-                    <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.08)', color: '#f59e0b' }}>QUEUED</span>
+                    <span className="text-xs font-medium px-2 py-0.5 rounded" style={{
+                      background: isRejected ? 'rgba(220,38,38,0.08)' : 'rgba(245,158,11,0.08)',
+                      color: isRejected ? '#dc2626' : '#f59e0b',
+                    }}>{rec.status}</span>
+                    <span className="text-xs font-medium px-2 py-0.5 rounded" style={{
+                      background: rec.consent_signed ? 'rgba(5,150,105,0.08)' : 'rgba(220,38,38,0.08)',
+                      color: rec.consent_signed ? '#059669' : '#dc2626',
+                    }}>
+                      {rec.consent_signed ? '✓ Consent' : '⚠ No Consent'}
+                    </span>
                   </div>
                 </div>
+
+                {/* Rejection Reason Banner */}
+                {isRejected && rec.rejection_reason && (
+                  <div className="flex items-start gap-2 mb-3 px-3 py-2.5 rounded-md text-xs" style={{ background: 'rgba(220,38,38,0.04)', border: '1px solid rgba(220,38,38,0.15)' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" className="flex-shrink-0 mt-0.5">
+                      <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+                    </svg>
+                    <div>
+                      <p className="font-semibold" style={{ color: '#dc2626' }}>Rejected by iPaaS</p>
+                      <p className="mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{rec.rejection_reason}</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-3">
                   <div><span style={{ color: 'var(--color-text-muted)' }}>Dx:</span> <strong>{rec.diagnosis_code || 'N/A'}</strong></div>
                   <div><span style={{ color: 'var(--color-text-muted)' }}>Desc:</span> <strong>{rec.diagnosis_desc || 'N/A'}</strong></div>
@@ -110,16 +153,29 @@ export default function SendPage() {
                   <div><span style={{ color: 'var(--color-text-muted)' }}>Created:</span> <strong>{new Date(rec.created_at).toLocaleDateString()}</strong></div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <button onClick={() => handleSend(rec.id)} disabled={sendingId === rec.id}
-                    className="ihomis-btn ihomis-btn-primary text-xs px-3 py-1.5">
-                    {sendingId === rec.id ? (
-                      <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1.5" /> Sending...</>
-                    ) : 'Send to WAH'}
-                  </button>
-                  <button onClick={() => handleRevert(rec.id)} disabled={revertingId === rec.id}
-                    className="ihomis-btn ihomis-btn-secondary text-xs px-3 py-1.5">
-                    {revertingId === rec.id ? 'Reverting...' : 'Revert to Records'}
-                  </button>
+                  {isRejected ? (
+                    <>
+                      <button onClick={() => handleRequeue(rec.id)} className="ihomis-btn ihomis-btn-primary text-xs px-3 py-1.5">
+                        ↻ Re-queue
+                      </button>
+                      <button onClick={() => handleRevert(rec.id)} disabled={revertingId === rec.id} className="ihomis-btn ihomis-btn-secondary text-xs px-3 py-1.5">
+                        {revertingId === rec.id ? 'Reverting...' : 'Revert to Records'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => handleSend(rec.id)} disabled={sendingId === rec.id}
+                        className="ihomis-btn ihomis-btn-primary text-xs px-3 py-1.5">
+                        {sendingId === rec.id ? (
+                          <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1.5" /> Sending...</>
+                        ) : 'Send to WAH'}
+                      </button>
+                      <button onClick={() => handleRevert(rec.id)} disabled={revertingId === rec.id}
+                        className="ihomis-btn ihomis-btn-secondary text-xs px-3 py-1.5">
+                        {revertingId === rec.id ? 'Reverting...' : 'Revert to Records'}
+                      </button>
+                    </>
+                  )}
                   <button onClick={() => setDeleteModal(rec.id)}
                     className="ihomis-btn text-xs px-3 py-1.5" style={{ color: 'var(--color-error)', border: '1px solid rgba(220,38,38,0.2)' }}>
                     Delete
@@ -136,7 +192,8 @@ export default function SendPage() {
                   </pre>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

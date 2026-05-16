@@ -12,7 +12,7 @@ import { validateTransformation } from '@/lib/validator';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { source_system, destination_system, payload, original_json } = body;
+    const { source_system, destination_system, payload, original_json, consent_signed } = body;
 
     // --- 1. Validate request ---
     if (!source_system || !destination_system || !payload) {
@@ -37,6 +37,36 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`[iPaaS Ingest] Received from ${source_system} → ${destination_system}`);
+
+    // --- 1b. Check patient data privacy consent ---
+    if (!consent_signed) {
+      const consentError = 'Patient data privacy consent form not signed or agreed. Record cannot be processed without patient consent per Republic Act 10173 (Data Privacy Act of 2012).';
+      console.warn(`[iPaaS Ingest] QUARANTINED — No consent: ${consentError}`);
+
+      // Store the record as QUARANTINED immediately
+      const rawPayloadForDb = typeof payload === 'string'
+        ? { hl7v2_message: payload, format: 'HL7v2' }
+        : payload;
+
+      const { data: quarantinedRecord } = await supabaseAdmin
+        .from('adapt_transaction_logs')
+        .insert({
+          source_system,
+          destination_system,
+          raw_payload: rawPayloadForDb,
+          status: 'QUARANTINED',
+          error_message: consentError,
+        })
+        .select()
+        .single();
+
+      return NextResponse.json({
+        success: false,
+        transaction_id: quarantinedRecord?.id,
+        status: 'QUARANTINED',
+        message: consentError,
+      }, { status: 422 });
+    }
 
     // --- 2. Insert into Supabase as PENDING ---
     // HL7 v2 comes as a string, FHIR comes as an object. Wrap strings for JSONB.

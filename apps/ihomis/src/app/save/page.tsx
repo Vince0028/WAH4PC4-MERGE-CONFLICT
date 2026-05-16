@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import IHOMISSidebar from '@/components/Sidebar';
+import ConsentFormModal from '@/components/ConsentFormModal';
 
 async function safeFetch(url: string, opts?: RequestInit) {
   const res = await fetch(url, opts);
@@ -27,6 +28,8 @@ const SAMPLE_DATA = {
 export default function SavePatientPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{type:'success'|'error', msg:string}|null>(null);
+  const [consentSigned, setConsentSigned] = useState(false);
+  const [showConsent, setShowConsent] = useState(false);
   const [form, setForm] = useState({
     patient_fname: '', patient_lname: '', patient_mname: '', patient_suffix: '',
     dob: '', sex: 'M', civil_status: 'S',
@@ -53,6 +56,7 @@ export default function SavePatientPage() {
     try {
       const payload = {
         ...form,
+        consent_signed: consentSigned,
         vitals: {
           bp_systolic: Number(form.bp_systolic) || 0, bp_diastolic: Number(form.bp_diastolic) || 0,
           heart_rate: Number(form.heart_rate) || 0, temperature: Number(form.temperature) || 0,
@@ -67,6 +71,7 @@ export default function SavePatientPage() {
       if (data.success) {
         showToast('success', 'Patient record saved.');
         setForm(prev => ({ ...prev, patient_fname: '', patient_lname: '', patient_mname: '', philhealth_no: '', chief_complaint: '', diagnosis_code: '', diagnosis_desc: '' }));
+        setConsentSigned(false);
       } else showToast('error', data.message || 'Failed to save');
     } catch { showToast('error', 'Failed to save record'); }
     finally { setSaving(false); }
@@ -152,6 +157,57 @@ export default function SavePatientPage() {
               <Field label="Physician" field="referring_physician" placeholder="Dr. Maria Santos" />
             </div>
           </div>
+          {/* Data Privacy Consent */}
+          <div className="ihomis-card p-5">
+            <h2 className="ihomis-section-title flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+              Data Privacy & Consent
+            </h2>
+            <div className="consent-section">
+              <div className="flex items-start gap-3 mb-3">
+                <label className="consent-checkbox-wrapper">
+                  <input
+                    type="checkbox"
+                    checked={consentSigned}
+                    onChange={e => setConsentSigned(e.target.checked)}
+                    className="consent-checkbox"
+                  />
+                  <span className="consent-checkmark" />
+                </label>
+                <div className="flex-1">
+                  <p className="text-xs font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                    Patient has read and agreed to the Data Privacy Consent Form
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                    Required under Republic Act 10173 (Data Privacy Act of 2012). Records without consent will be quarantined.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowConsent(true)}
+                className="consent-view-link"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+                View Patient Consent Form
+              </button>
+              {!consentSigned && (
+                <div className="consent-warning mt-3">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  <span className="text-xs">Without consent, this record will be quarantined when sent to WAH/iPaaS.</span>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <button onClick={handleSave} disabled={saving} className="ihomis-btn ihomis-btn-primary px-6 py-2.5">
               {saving ? 'Saving...' : (
@@ -161,6 +217,7 @@ export default function SavePatientPage() {
           </div>
         </div>
         {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
+        <ConsentFormModal open={showConsent} onClose={() => setShowConsent(false)} />
       </main>
     </>
   );
