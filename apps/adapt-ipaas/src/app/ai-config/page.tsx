@@ -44,6 +44,14 @@ const AI_CONFIG: ConfigItem[] = [
     type: 'short',
   },
   {
+    id: 'api_key_groq',
+    label: 'Groq API Key',
+    category: 'AI Model',
+    value: 'gsk_...',
+    description: 'Groq API key for LPU-accelerated fallback transformation (LLama 3.3)',
+    type: 'short',
+  },
+  {
     id: 'primary_model',
     label: 'Primary Model',
     category: 'AI Model',
@@ -56,13 +64,14 @@ const AI_CONFIG: ConfigItem[] = [
     label: 'Model Fallback Chain',
     category: 'AI Model',
     value: JSON.stringify([
-      'gemini-3.1-flash-lite',
-      'gemini-2.5-flash-lite',
-      'gemini-2.5-flash',
-      'gemini-3-flash',
-      'gemini-2.0-flash',
+      { provider: 'gemini', model: 'gemini-3.1-flash-lite' },
+      { provider: 'gemini', model: 'gemini-2.5-flash-lite' },
+      { provider: 'gemini', model: 'gemini-2.5-flash' },
+      { provider: 'groq', model: 'llama-3.3-70b-versatile' },
+      { provider: 'groq', model: 'mixtral-8x7b-32768' },
+      { provider: 'groq', model: 'llama3-70b-8192' }
     ], null, 2),
-    description: 'Ordered fallback chain — if a model hits quota (429), the next model is tried automatically',
+    description: 'Ordered fallback chain — if Gemini hits quota (429), the engine juggles to Groq automatically',
     type: 'code',
   },
   {
@@ -382,7 +391,7 @@ export default function AIConfigPage() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-md" style={{ background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.15)', color: '#059669' }}>
               <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#059669' }} />
-              Gemini Active
+              Gemini & Groq Active
             </div>
             <button
               onClick={() => setRevealAll(!revealAll)}

@@ -1,15 +1,17 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
 
-// Model fallback chain — if one model hits quota, try the next
-const MODEL_FALLBACKS = [
-  process.env.GEMINI_MODEL || 'gemini-2.0-flash',
-  'gemini-3.1-flash-lite',   // 500 RPD — highest free quota
-  'gemini-2.5-flash-lite',   // 20 RPD
-  'gemini-2.5-flash',        // 20 RPD
-  'gemini-3-flash',          // 20 RPD
-  'gemini-2.0-flash',        // fallback
+// Model fallback chain — try Gemini first, then juggle to Groq
+export const MODEL_FALLBACKS = [
+  { provider: 'gemini', model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite' },
+  { provider: 'gemini', model: 'gemini-2.5-flash-lite' },
+  { provider: 'gemini', model: 'gemini-2.5-flash' },
+  { provider: 'groq', model: 'llama-3.3-70b-versatile' },
+  { provider: 'groq', model: 'mixtral-8x7b-32768' },
+  { provider: 'groq', model: 'llama3-70b-8192' }
 ];
 
 const HL7V2_TO_FHIR_PROMPT = `You are a healthcare data transformation engine for the Philippine Local Health Information Exchange (LHIE).
@@ -80,13 +82,13 @@ All numeric vitals must be numbers, not strings. Missing fields should use empty
 Output ONLY valid JSON. No markdown, no code fences, no explanation.`;
 
 /**
- * Transform data using Gemini AI with automatic model fallback.
- * If a model hits quota (429), it tries the next model in the chain.
+ * Transform data using AI with automatic model fallback juggling.
+ * If Gemini hits quota, it instantly falls back to Groq LPU models.
  */
-export async function transformWithGemini(
+export async function transformWithAI(
   payload: unknown,
   direction: 'IHOMIS_TO_FHIR' | 'FHIR_TO_IHOMIS'
-): Promise<{ success: boolean; data: Record<string, unknown> | null; error: string | null }> {
+): Promise<{ success: boolean; data: Record<string, unknown> | null; error: string | null; usedModel?: string }> {
   const systemPrompt = direction === 'IHOMIS_TO_FHIR' 
     ? HL7V2_TO_FHIR_PROMPT 
     : FHIR_TO_HL7V2_PROMPT;
@@ -95,42 +97,51 @@ export async function transformWithGemini(
     ? payload 
     : JSON.stringify(payload, null, 2);
 
-  const prompt = `${systemPrompt}\n\nInput Data:\n${inputData}`;
+  const prompt = \`\${systemPrompt}\\n\\nInput Data:\\n\${inputData}\`;
 
   // Deduplicate model list while preserving order
-  const models = [...new Set(MODEL_FALLBACKS)];
+  const models = MODEL_FALLBACKS.filter((v, i, a) => a.findIndex(t => (t.model === v.model)) === i);
 
-  for (const modelName of models) {
+  for (const { provider, model: modelName } of models) {
     try {
-      console.log(`[Gemini] Trying model: ${modelName} for ${direction}...`);
+      console.log(\`[AI] Trying \${provider} model: \${modelName} for \${direction}...\`);
 
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        generationConfig: {
-          responseMimeType: 'application/json',
+      let responseText = '';
+
+      if (provider === 'gemini' && genAI) {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig: { responseMimeType: 'application/json', temperature: 0.1 },
+        });
+        const result = await model.generateContent(prompt);
+        responseText = result.response.text();
+      } else if (provider === 'groq' && groq) {
+        const completion = await groq.chat.completions.create({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: \`Input Data:\\n\${inputData}\` }
+          ],
+          model: modelName,
           temperature: 0.1,
-        },
-      });
+          response_format: { type: 'json_object' },
+        });
+        responseText = completion.choices[0]?.message?.content || '';
+      } else {
+        console.warn(\`[AI] Provider \${provider} not configured (missing API key)\`);
+        continue;
+      }
 
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
+      if (!responseText) throw new Error('Empty response');
+
       const parsedData = JSON.parse(responseText);
-
-      console.log(`[Gemini] Transformation successful using ${modelName}`);
-      return { success: true, data: parsedData, error: null };
+      console.log(\`[AI] Transformation successful using \${provider} (\${modelName})\`);
+      return { success: true, data: parsedData, error: null, usedModel: modelName };
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const isRetryable = errorMessage.includes('429') || errorMessage.includes('503') || errorMessage.includes('quota') || errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('Service Unavailable') || errorMessage.includes('high demand');
-
-      if (isRetryable) {
-        console.warn(`[Gemini] Model ${modelName} unavailable (quota/503), trying next...`);
-        continue; // Try next model
-      }
-
-      // Non-quota error — stop trying
-      console.error(`[Gemini] Error with ${modelName}:`, errorMessage);
-      return { success: false, data: null, error: `Transformation failed: ${errorMessage}` };
+      // Fallback on quota, rate limit, server errors, or JSON parsing errors
+      console.warn(\`[AI] \${provider} (\${modelName}) failed/unavailable: \${errorMessage}. Juggling to next model...\`);
+      continue;
     }
   }
 
@@ -138,6 +149,6 @@ export async function transformWithGemini(
   return {
     success: false,
     data: null,
-    error: 'All Gemini models quota exhausted. Please wait for quota reset or add a new API key.',
+    error: 'All AI models (Gemini & Groq) exhausted or failed. Please check your API keys or wait for quota reset.',
   };
 }

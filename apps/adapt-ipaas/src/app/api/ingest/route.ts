@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { transformWithGemini } from '@/lib/gemini';
+import { transformWithAI } from '@/lib/ai';
 import { validateTransformation } from '@/lib/validator';
 
 /**
@@ -104,9 +104,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`[iPaaS Ingest] Transaction ${transactionId} → TRANSFORMING`);
 
-    // --- 4. AI Transformation via Gemini ---
+    // --- 4. AI Transformation via Gemini & Groq Juggling ---
     const direction = source_system === 'iHOMIS' ? 'IHOMIS_TO_FHIR' : 'FHIR_TO_IHOMIS';
-    const transformResult = await transformWithGemini(payload, direction);
+    const transformResult = await transformWithAI(payload, direction);
 
     if (!transformResult.success || !transformResult.data) {
       // Quarantine if transformation fails
