@@ -89,12 +89,12 @@ export async function transformWithAI(
   payload: unknown,
   direction: 'IHOMIS_TO_FHIR' | 'FHIR_TO_IHOMIS'
 ): Promise<{ success: boolean; data: Record<string, unknown> | null; error: string | null; usedModel?: string }> {
-  const systemPrompt = direction === 'IHOMIS_TO_FHIR' 
-    ? HL7V2_TO_FHIR_PROMPT 
+  const systemPrompt = direction === 'IHOMIS_TO_FHIR'
+    ? HL7V2_TO_FHIR_PROMPT
     : FHIR_TO_HL7V2_PROMPT;
 
-  const inputData = typeof payload === 'string' 
-    ? payload 
+  const inputData = typeof payload === 'string'
+    ? payload
     : JSON.stringify(payload, null, 2);
 
   const prompt = \`\${systemPrompt}\\n\\nInput Data:\\n\${inputData}\`;
