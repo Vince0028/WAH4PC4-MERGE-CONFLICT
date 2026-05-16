@@ -97,50 +97,51 @@ export async function transformWithAI(
     ? payload
     : JSON.stringify(payload, null, 2);
 
-  const prompt = \`\${systemPrompt}\\n\\nInput Data:\\n\${inputData}\`;
+  var prompt = systemPrompt + '\n\nInput Data:\n' + inputData;
 
   // Deduplicate model list while preserving order
-  const models = MODEL_FALLBACKS.filter((v, i, a) => a.findIndex(t => (t.model === v.model)) === i);
+  var models = MODEL_FALLBACKS.filter(function(v, i, a) { return a.findIndex(function(t) { return t.model === v.model; }) === i; });
 
-  for (const { provider, model: modelName } of models) {
+  for (var idx = 0; idx < models.length; idx++) {
+    var provider = models[idx].provider;
+    var modelName = models[idx].model;
     try {
-      console.log(\`[AI] Trying \${provider} model: \${modelName} for \${direction}...\`);
+      console.log('[AI] Trying ' + provider + ' model: ' + modelName + ' for ' + direction + '...');
 
-      let responseText = '';
+      var responseText = '';
 
       if (provider === 'gemini' && genAI) {
-        const model = genAI.getGenerativeModel({
+        var model = genAI.getGenerativeModel({
           model: modelName,
           generationConfig: { responseMimeType: 'application/json', temperature: 0.1 },
         });
-        const result = await model.generateContent(prompt);
+        var result = await model.generateContent(prompt);
         responseText = result.response.text();
       } else if (provider === 'groq' && groq) {
-        const completion = await groq.chat.completions.create({
+        var completion = await groq.chat.completions.create({
           messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: \`Input Data:\\n\${inputData}\` }
+            { role: 'system' as const, content: systemPrompt },
+            { role: 'user' as const, content: 'Input Data:\n' + inputData }
           ],
           model: modelName,
           temperature: 0.1,
-          response_format: { type: 'json_object' },
+          response_format: { type: 'json_object' as const },
         });
         responseText = completion.choices[0]?.message?.content || '';
       } else {
-        console.warn(\`[AI] Provider \${provider} not configured (missing API key)\`);
+        console.warn('[AI] Provider ' + provider + ' not configured (missing API key)');
         continue;
       }
 
       if (!responseText) throw new Error('Empty response');
 
-      const parsedData = JSON.parse(responseText);
-      console.log(\`[AI] Transformation successful using \${provider} (\${modelName})\`);
+      var parsedData = JSON.parse(responseText);
+      console.log('[AI] Transformation successful using ' + provider + ' (' + modelName + ')');
       return { success: true, data: parsedData, error: null, usedModel: modelName };
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      // Fallback on quota, rate limit, server errors, or JSON parsing errors
-      console.warn(\`[AI] \${provider} (\${modelName}) failed/unavailable: \${errorMessage}. Juggling to next model...\`);
+      var errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn('[AI] ' + provider + ' (' + modelName + ') failed: ' + errorMessage + '. Juggling to next...');
       continue;
     }
   }
@@ -149,6 +150,7 @@ export async function transformWithAI(
   return {
     success: false,
     data: null,
-    error: 'All AI models (Gemini & Groq) exhausted or failed. Please check your API keys or wait for quota reset.',
+    error: 'All AI models (Gemini and Groq) exhausted or failed. Check API keys or wait for quota reset.',
   };
 }
+
